@@ -26,7 +26,7 @@ size: $(OBJS)
 	$(SIZE) $(OBJS)
 
 clean:
-	rm -f $(OBJS)
+	rm -f $(OBJS) $(TARGET).o
 
 veryclean: clean
 	rm -f $(TARGET).hex
