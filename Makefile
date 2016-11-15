@@ -16,6 +16,9 @@ all: $(TARGET).hex
 flash: $(TARGET).hex
 	avrdude -c $(PROG) -p$(MCU) -U flash:w:$^
 
+reset:
+	avrdude -c $(PROG) -p$(MCU)
+
 fuse:
 	avrdude -c $(PROG) -p$(MCU) -U lfuse:w:0xee:m -U hfuse:w:0xdf:m -U efuse:w:0x01:m
 

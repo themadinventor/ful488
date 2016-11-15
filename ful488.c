@@ -1,9 +1,10 @@
 /*
  * Ful488
- * (c) 2015 Fredrik Ahlberg <fredrik@z80.se>
+ * (c) 2015-2016 Fredrik Ahlberg <fredrik@z80.se>
  */
 
 #include <avr/io.h>
+#include <avr/wdt.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
 #include <usbdrv.h>
@@ -47,6 +48,10 @@ usbMsgLen_t usbFunctionSetup(uint8_t data[8])
 	case FUL488_IFC:
 		gpib_ifc();
 		return 0;
+
+	case FUL488_STATUS:
+		dataBuffer[0] = gpib_status();
+		return 1;
 	}
 
 	return 0;
@@ -54,15 +59,12 @@ usbMsgLen_t usbFunctionSetup(uint8_t data[8])
 
 int main(void)
 {
-	uint8_t i;
-
 	usbInit();
 	usbDeviceDisconnect();
 
-	i = 0;
-	while (--i) {
-		_delay_ms(1);
-	}
+	_delay_ms(200);
+
+	wdt_enable(WDTO_120MS);
 
 	usbDeviceConnect();
 	sei();
@@ -71,6 +73,7 @@ int main(void)
 
 	for (;;) {
 		usbPoll();
+		wdt_reset();
 	}
 }
 

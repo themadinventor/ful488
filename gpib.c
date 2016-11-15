@@ -1,11 +1,15 @@
 /*
  * Ful488
- * (c) 2015 Fredrik Ahlberg <fredrik@z80.se>
+ * (c) 2015-2016 Fredrik Ahlberg <fredrik@z80.se>
  */
 
 #include <avr/io.h>
 #include <util/delay.h>
 #include "pins.h"
+
+#define TIMEOUT 100000
+
+static uint8_t status;
 
 static inline void set_dio(uint8_t data)
 {
@@ -43,6 +47,11 @@ static inline uint8_t read_dio(void)
 
 uint8_t gpib_write(uint8_t *buf, uint16_t len, uint8_t atn, uint8_t eoi)
 {
+	uint32_t timeout;
+
+	/* Clear status field */
+	status = 0;
+
 	/* Assert ATN if requested */
 	if (atn) {
 		ATN_PORT &= ~ATN_BIT;
@@ -66,6 +75,9 @@ uint8_t gpib_write(uint8_t *buf, uint16_t len, uint8_t atn, uint8_t eoi)
 			ATN_PORT |= ATN_BIT;
 			ATN_DDR &= ~ATN_BIT;
 			DAV_DDR &= ~DAV_BIT;
+
+			/* mark error */
+			status = 1;
 			return 1;
 		}
 
@@ -79,13 +91,59 @@ uint8_t gpib_write(uint8_t *buf, uint16_t len, uint8_t atn, uint8_t eoi)
 		}
 
 		/* Wait for RFD */
-		while (!(NRFD_PIN & NRFD_BIT)) ;
+		timeout = TIMEOUT;
+		while (!(NRFD_PIN & NRFD_BIT)) {
+			if (!timeout--) {
+				/* Release dio */
+				release_dio();
+
+				/* Release DAV */
+				DAV_PORT |= DAV_BIT;
+				DAV_DDR &= ~DAV_BIT;
+
+				/* Deassert EOI */
+				EOI_PORT |= EOI_BIT;
+				EOI_DDR &= ~EOI_BIT;
+
+				/* Deassert ATN */
+				ATN_PORT |= ATN_BIT;
+				ATN_DDR &= ~ATN_BIT;
+
+				/* mark error */
+				status = 2;
+
+				return 2;
+			}
+		}
 
 		/* Assert DAV */
 		DAV_PORT &= ~DAV_BIT;
 
 		/* Wait for NDAC */
-		while (!(NDAC_PIN & NDAC_BIT)) ;
+		timeout = TIMEOUT;
+		while (!(NDAC_PIN & NDAC_BIT)) {
+			if (!timeout--) {
+				/* Release dio */
+				release_dio();
+
+				/* Release DAV */
+				DAV_PORT |= DAV_BIT;
+				DAV_DDR &= ~DAV_BIT;
+
+				/* Deassert EOI */
+				EOI_PORT |= EOI_BIT;
+				EOI_DDR &= ~EOI_BIT;
+
+				/* Deassert ATN */
+				ATN_PORT |= ATN_BIT;
+				ATN_DDR &= ~ATN_BIT;
+
+				/* mark error */
+				status = 3;
+
+				return 3;
+			}
+		}
 
 		/* Deassert DAV */
 		DAV_PORT |= DAV_BIT;
@@ -122,13 +180,29 @@ uint8_t gpib_command(uint8_t cmd)
 uint8_t gpib_read(uint8_t *buf)
 {
 	uint8_t eoi;
+	uint32_t timeout;
+
+	/* Clear status field */
+	status = 0;
 
 	/* Unassert NRFD */
 	NRFD_PORT |= NRFD_BIT;
 	NRFD_DDR &= ~NRFD_BIT;
 
 	/* Wait for DAV */
-	while (DAV_PIN & DAV_BIT) ;
+	timeout = TIMEOUT;
+	while (DAV_PIN & DAV_BIT) {
+		if (!timeout--) {
+			/* Assert NDAC */
+			NDAC_PORT &= ~NDAC_BIT;
+			NDAC_DDR |= NDAC_BIT;
+
+			/* mark error */
+			status = 4;
+
+			return 4;
+		}
+	}
 
 	/* Assert NRFD */
 	NRFD_PORT &= ~NRFD_BIT;
@@ -143,7 +217,19 @@ uint8_t gpib_read(uint8_t *buf)
 	NDAC_DDR &= ~NDAC_BIT;
 
 	/* Wait for DAV */
-	while (!(DAV_PIN & DAV_BIT)) ;
+	timeout = TIMEOUT;
+	while (!(DAV_PIN & DAV_BIT)) {
+		if (!timeout--) {
+			/* Assert NDAC */
+			NDAC_PORT &= ~NDAC_BIT;
+			NDAC_DDR |= NDAC_BIT;
+
+			/* mark error */
+			status = 5;
+
+			return 5;
+		}
+	}
 
 	/* Assert NDAC */
 	NDAC_PORT &= ~NDAC_BIT;
@@ -171,6 +257,9 @@ void gpib_init(void)
 
 void gpib_ren(uint8_t enable)
 {
+	/* Clear status field */
+	status = 0;
+
 	if (enable) {
 		REN_PORT &= ~REN_BIT;
 		REN_DDR |= REN_BIT;
@@ -182,6 +271,9 @@ void gpib_ren(uint8_t enable)
 
 void gpib_ifc(void)
 {
+	/* Clear status field */
+	status = 0;
+
 	IFC_PORT &= ~IFC_BIT;
 	IFC_DDR |= IFC_BIT;
 
@@ -195,6 +287,13 @@ void gpib_ifc(void)
 
 uint8_t gpib_srq(void)
 {
+	/* Clear status field */
+	status = 0;
+
 	return !(SRQ_PIN & SRQ_BIT);
 }
 
+uint8_t gpib_status(void)
+{
+	return status;
+}

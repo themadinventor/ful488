@@ -1,3 +1,8 @@
+/*
+ * Ful488
+ * (c) 2015-2016 Fredrik Ahlberg <fredrik@z80.se>
+ */
+
 #ifndef FUL488_H
 #define FUL488_H
 
@@ -8,6 +13,7 @@ enum {
 	FUL488_REN = 4,		/* Control REN */
 	FUL488_SRQ = 5,		/* Read SRQ */
 	FUL488_IFC = 6,		/* Pulse IFC */
+	FUL488_STATUS = 7,	/* Read status */
 };
 
 #endif

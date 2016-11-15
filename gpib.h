@@ -23,5 +23,6 @@ void	gpib_init(void);
 void	gpib_ren(uint8_t enable);
 void	gpib_ifc(void);
 uint8_t	gpib_srq(void);
+uint8_t gpib_status(void);
 
 #endif
