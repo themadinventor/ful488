@@ -59,12 +59,18 @@ usbMsgLen_t usbFunctionSetup(uint8_t data[8])
 
 int main(void)
 {
+	wdt_reset();
+	wdt_enable(WDTO_120MS);
+
 	usbInit();
 	usbDeviceDisconnect();
 
-	_delay_ms(200);
+	uint8_t t;
+	for (t=255; t; t--) {
+		_delay_ms(1);
+		wdt_reset();
+	}
 
-	wdt_enable(WDTO_120MS);
 
 	usbDeviceConnect();
 	sei();

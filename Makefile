@@ -20,7 +20,7 @@ reset:
 	avrdude -c $(PROG) -p$(MCU)
 
 fuse:
-	avrdude -c $(PROG) -p$(MCU) -U lfuse:w:0xee:m -U hfuse:w:0xdf:m -U efuse:w:0x01:m
+	avrdude -c $(PROG) -p$(MCU) -U lfuse:w:0xff:m -U hfuse:w:0xcc:m -U efuse:w:0xf9:m
 
 size: $(OBJS)
 	$(SIZE) $(OBJS)
